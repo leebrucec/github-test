@@ -1,29 +1,40 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"syscall"
+
 	"github.com/google/go-github/github"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
-func FetchOrganizations(username string) ([]*github.Organization, error) {
-	client := github.NewClient(nil)
-	orgs, _, err := client.Organizations.List(context.Background(), username, nil)
-	return orgs, err
-}
-
-// ListMembersOptions specifies optional parameters to the
-// OrganizationsService.ListMembers method.
-func FetchOrganizationMembers(username string) ([]*github.User, error) {
-	client := github.NewClient(nil)
-	members, _, err := client.Organizations.ListMembers(context.Background(), "leetestorg", nil)
-	return members, err
-}
-
-func FetchOrganizationRepositories(username string) ([]*github.Repository, error) {
-	client := github.NewClient(nil)
+func FetchOrganizationRepositories(client *github.Client) ([]*github.Repository, error) {
+//	client := github.NewClient(nil)
 	repos, _, err := client.Repositories.ListByOrg(context.Background(), "leetestorg", nil)
 	return repos, err
+}
+
+func BasicAuthentication() (*github.Client, string) {
+	r := bufio.NewReader(os.Stdin)
+	fmt.Print("GitHub Username: ")
+	username, _ := r.ReadString('\n')
+
+	fmt.Print("GitHub Password: ")
+	bytePassword, _ := terminal.ReadPassword(int(syscall.Stdin))
+	password := string(bytePassword)
+
+	tp := github.BasicAuthTransport{
+		Username: strings.TrimSpace(username),
+		Password: strings.TrimSpace(password),
+	}
+
+	client := github.NewClient(tp.Client())
+
+	return client, username
 }
 
 /*
@@ -35,12 +46,39 @@ func FetchRepositoryLicense(repo Repository) (License, error) {
 */
 
 func main() {
-	var username string
-	fmt.Print("Enter GitHub username: ")
-	fmt.Scanf("%s", &username)
+	client, username := BasicAuthentication();
 
+	fmt.Printf("username = %v\n", username)
+
+//	if err != nil {
+//		fmt.Printf("\nerror: %v\n", err)
+//		return
+//	}
+
+	repos, err := FetchOrganizationRepositories(client)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	} else {
+		for i, repo := range repos {
+			fmt.Printf("%v. %v\n", i+1, repo.GetName())
+			license := repo.GetLicense()
+			if license != nil {
+				fmt.Printf("\tName = %v\n", license.GetName())
+				fmt.Printf("\tURL =  %v\n", license.GetURL())
+				fmt.Printf("\tKey =  %v\n", license.GetKey())
+			}
+		}
+	}
+
+
+	// fmt.Printf("\n%v\n", github.Stringify(user))
+
+	//username := user.GetName()
+
+/*
 	fmt.Printf("------- Organizations: %v\n", username)
-	organizations, err := FetchOrganizations(username)
+	organizations, err := FetchOrganizations(client, username)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -75,4 +113,5 @@ func main() {
 			}
 		}
 	}
+	*/
 }
