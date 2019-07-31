@@ -1,6 +1,6 @@
 # github-test
 
-DESCRUOTION
+DESCRIPTION
 github-test is a simple program written using go and utilizing the go-getgithub library
 API set. The program will add a license to all repositories a github organization that
 the user has permission to do so.
